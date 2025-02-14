@@ -18,6 +18,7 @@ user_multipliers = {}  # Множители для каждого игрока
 # Подключение к базе данных
 DATABASE_URL = os.getenv('DATABASE_URL')
 url = urlparse(DATABASE_URL)
+print(url)
 connection = psycopg2.connect(
     database=url.path[1:],
     user=url.username,
