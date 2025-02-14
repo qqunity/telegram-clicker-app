@@ -26,11 +26,6 @@ jobs:
         python -m pytest tests/ || true
     
     - name: Deploy to VDS
-      env:
-        VDS_HOST: ${{ secrets.VDS_HOST }}
-        VDS_USERNAME: ${{ secrets.VDS_USERNAME }}
-        VDS_SSH_KEY: ${{ secrets.VDS_SSH_KEY }}
-      if: env.VDS_HOST != '' && env.VDS_USERNAME != '' && env.VDS_SSH_KEY != ''
       uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.VDS_HOST }}
@@ -45,8 +40,8 @@ jobs:
           source venv/bin/activate || exit 1
           echo "Installing dependencies..."
           pip install -r requirements.txt || exit 1
-          echo "Restarting bot service..."
+          echo "Restarting services..."
           sudo systemctl restart telegram-bot
-          echo "Checking bot service status..."
+          echo "Checking services status..."
           sudo systemctl status telegram-bot --no-pager
           echo "Deployment completed successfully!" 

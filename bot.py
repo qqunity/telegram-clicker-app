@@ -1,4 +1,4 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 import json
 import asyncio
@@ -7,9 +7,13 @@ import os
 from dotenv import load_dotenv
 import psycopg2
 from urllib.parse import urlparse
+from server import start_server
 
 # Загружаем переменные окружения в самом начале
 load_dotenv()
+
+# Запускаем веб-сервер в отдельном потоке
+start_server()
 
 # Применяем патч для event loop
 nest_asyncio.apply()
@@ -24,7 +28,6 @@ if not DATABASE_URL:
     raise ValueError("DATABASE_URL не найден в .env файле или переменных окружения")
 
 url = urlparse(DATABASE_URL)
-print(url)
 connection = psycopg2.connect(
     database=url.path[1:],
     user=url.username,
@@ -72,14 +75,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id not in user_scores:
         user_scores[user_id] = 0
     
-    keyboard = [
-        [InlineKeyboardButton("Клик! 👆", callback_data="click")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    webapp_button = InlineKeyboardButton(
+        text="🎮 Играть", 
+        web_app=WebAppInfo(url=f"https://qqunity.ru")
+    )
+    stats_button = InlineKeyboardButton("📊 Статистика", callback_data="stats")
+    keyboard = InlineKeyboardMarkup([[webapp_button], [stats_button]])
     
     await update.message.reply_text(
-        f"Ваш текущий счет: {user_scores[user_id]}\nНажмите на кнопку, чтобы увеличить счет!",
-        reply_markup=reply_markup
+        "🎮 Добро пожаловать в Telegram Кликер!\n\n"
+        "Нажимайте на кнопку, чтобы заработать очки.\n"
+        "Каждые 100 очков ваш множитель будет расти!",
+        reply_markup=keyboard
     )
 
 # Обработчик нажатия кнопки
@@ -131,9 +138,19 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = json.loads(update.effective_message.web_app_data.data)
     user_id = str(update.effective_user.id)
+    
+    # Обновляем счет
     user_scores[user_id] = data['score']
+    user_multipliers[user_id] = data.get('multiplier', 1)
+    
+    # Сохраняем в БД
     await save_scores()
-    await update.message.reply_text(f"Ваш счет обновлен: {data['score']}")
+    
+    await update.message.reply_text(
+        f"🎮 Игра сохранена!\n"
+        f"📊 Ваш счет: {data['score']}\n"
+        f"✨ Множитель: x{data.get('multiplier', 1)}"
+    )
 
 async def main():
     global user_scores

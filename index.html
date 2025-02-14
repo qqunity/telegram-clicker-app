@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Gopher Clicker</title>
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Кликер</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
@@ -10,51 +11,91 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-color: var(--tg-theme-bg-color, #fff);
-            color: var(--tg-theme-text-color, #000);
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
         }
-        
+
+        #score {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
         #clickButton {
             width: 200px;
             height: 200px;
             border-radius: 50%;
             border: none;
-            background: var(--tg-theme-button-color, #2481cc);
-            color: var(--tg-theme-button-text-color, #fff);
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
             font-size: 24px;
-            margin: 20px;
             cursor: pointer;
             transition: transform 0.1s;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
-        
+
         #clickButton:active {
             transform: scale(0.95);
         }
-        
-        #score {
-            font-size: 32px;
-            margin: 20px;
+
+        .stats {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 1.2rem;
+        }
+
+        .multiplier {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background: var(--tg-theme-secondary-bg-color);
+            border-radius: 8px;
         }
     </style>
 </head>
 <body>
-    <div id="score">Счет: 0</div>
-    <button id="clickButton">Клик!</button>
+    <div id="score">0</div>
+    <button id="clickButton">КЛИК!</button>
+    <div class="stats">
+        <div class="multiplier">Множитель: x<span id="multiplier">1</span></div>
+    </div>
 
     <script>
         let tg = window.Telegram.WebApp;
         tg.expand();
-        
+
         let score = 0;
+        let multiplier = 1;
         const scoreElement = document.getElementById('score');
         const clickButton = document.getElementById('clickButton');
-        
+        const multiplierElement = document.getElementById('multiplier');
+
+        // Загружаем сохраненный счет из MainButton (если есть)
+        if (tg.initDataUnsafe.user) {
+            // Здесь можно добавить загрузку сохраненного счета
+        }
+
         clickButton.addEventListener('click', () => {
-            score++;
-            scoreElement.textContent = `Счет: ${score}`;
+            score += multiplier;
+            scoreElement.textContent = score;
+            
+            // Каждые 100 очков увеличиваем множитель
+            if (score % 100 === 0) {
+                multiplier++;
+                multiplierElement.textContent = multiplier;
+            }
+
             // Отправляем данные в бот
-            tg.sendData(JSON.stringify({score: score}));
+            tg.sendData(JSON.stringify({
+                score: score,
+                multiplier: multiplier
+            }));
         });
+
+        // Инициализация
+        tg.ready();
     </script>
 </body>
 </html> 
