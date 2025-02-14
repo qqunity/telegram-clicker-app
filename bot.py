@@ -8,6 +8,9 @@ from dotenv import load_dotenv
 import psycopg2
 from urllib.parse import urlparse
 
+# Загружаем переменные окружения в самом начале
+load_dotenv()
+
 # Применяем патч для event loop
 nest_asyncio.apply()
 
@@ -17,6 +20,9 @@ user_multipliers = {}  # Множители для каждого игрока
 
 # Подключение к базе данных
 DATABASE_URL = os.getenv('DATABASE_URL')
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL не найден в .env файле или переменных окружения")
+
 url = urlparse(DATABASE_URL)
 print(url)
 connection = psycopg2.connect(
@@ -134,8 +140,10 @@ async def main():
     # Загружаем сохраненные данные
     user_scores = await load_scores()
     
-    load_dotenv()  # загружаем переменные из .env файла
     token = os.getenv('BOT_TOKEN')
+    if not token:
+        raise ValueError("BOT_TOKEN не найден в .env файле или переменных окружения")
+        
     application = Application.builder().token(token).build()
 
     application.add_handler(CommandHandler("start", start))
