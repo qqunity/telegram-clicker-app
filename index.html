@@ -53,9 +53,31 @@
             background: var(--tg-theme-secondary-bg-color);
             border-radius: 8px;
         }
+
+        .save-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .save-status.success {
+            background: rgba(0, 255, 0, 0.2);
+            color: green;
+            display: block;
+        }
+
+        .save-status.error {
+            background: rgba(255, 0, 0, 0.2);
+            color: red;
+            display: block;
+        }
     </style>
 </head>
 <body>
+    <div id="saveStatus" class="save-status"></div>
     <div id="score">0</div>
     <button id="clickButton">КЛИК!</button>
     <div class="stats">
@@ -71,31 +93,119 @@
         const scoreElement = document.getElementById('score');
         const clickButton = document.getElementById('clickButton');
         const multiplierElement = document.getElementById('multiplier');
+        const saveStatus = document.getElementById('saveStatus');
 
-        // Загружаем сохраненный счет из MainButton (если есть)
-        if (tg.initDataUnsafe.user) {
-            // Здесь можно добавить загрузку сохраненного счета
+        // Добавьте после инициализации переменных
+        let lastUpdateTime = 0;
+        const UPDATE_INTERVAL = 5000; // 5 секунд
+
+        // Функция для периодического обновления данных
+        async function periodicUpdate() {
+            const now = Date.now();
+            if (now - lastUpdateTime >= UPDATE_INTERVAL) {
+                await loadUserData();
+                lastUpdateTime = now;
+            }
+            requestAnimationFrame(periodicUpdate);
         }
 
-        clickButton.addEventListener('click', () => {
-            score += multiplier;
-            scoreElement.textContent = score;
-            
-            // Каждые 100 очков увеличиваем множитель
-            if (score % 100 === 0) {
-                multiplier++;
-                multiplierElement.textContent = multiplier;
+        // Получаем данные пользователя при загрузке
+        async function loadUserData() {
+            if (!tg.initDataUnsafe?.user?.id) {
+                console.error('Ошибка: ID пользователя недоступен');
+                return null;
             }
 
-            // Отправляем данные в бот
-            tg.sendData(JSON.stringify({
-                score: score,
-                multiplier: multiplier
-            }));
+            try {
+                const userId = tg.initDataUnsafe.user.id;
+                const response = await fetch(`/api/get_user_data?user_id=${userId}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Обновляем глобальные переменные
+                score = parseInt(data.score) || 0;
+                multiplier = parseInt(data.multiplier) || 1;
+                
+                // Обновляем отображение
+                scoreElement.textContent = score;
+                multiplierElement.textContent = multiplier;
+                
+                return data;
+            } catch (error) {
+                console.error('Ошибка при загрузке данных:', error);
+                return null;
+            }
+        }
+
+        function showSaveStatus(message, isError = false) {
+            saveStatus.textContent = message;
+            saveStatus.className = 'save-status ' + (isError ? 'error' : 'success');
+            setTimeout(() => {
+                saveStatus.className = 'save-status';
+            }, 3000);
+        }
+
+        clickButton.addEventListener('click', async () => {
+            try {
+                if (!tg.initDataUnsafe?.user?.id) {
+                    showSaveStatus('Ошибка: ID пользователя недоступен', true);
+                    throw new Error('ID пользователя недоступен');
+                }
+
+                const userId = tg.initDataUnsafe.user.id;
+                showSaveStatus('Сохранение...');
+                
+                score += multiplier;
+                scoreElement.textContent = score;
+                
+                if (score % 100 === 0) {
+                    multiplier++;
+                    multiplierElement.textContent = multiplier;
+                }
+
+                const saveData = {
+                    user_id: userId,
+                    score: score,
+                    multiplier: multiplier
+                };
+
+                const response = await fetch('/api/save_user_data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(saveData)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok || result.status !== 'success') {
+                    showSaveStatus(result.message || 'Ошибка сохранения', true);
+                    throw new Error(result.message || 'Ошибка сохранения данных');
+                }
+
+                // Обновляем данные с сервера после успешного сохранения
+                await loadUserData();
+                
+                showSaveStatus('Сохранено!');
+                
+                tg.sendData(JSON.stringify(saveData));
+
+            } catch (error) {
+                showSaveStatus('Ошибка: ' + error.message, true);
+            }
         });
 
         // Инициализация
+        loadUserData();
         tg.ready();
+
+        // Запускаем периодическое обновление
+        periodicUpdate();
     </script>
 </body>
 </html> 
