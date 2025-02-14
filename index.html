@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gopher Clicker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: var(--tg-theme-bg-color, #fff);
+            color: var(--tg-theme-text-color, #000);
+        }
+        
+        #clickButton {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            border: none;
+            background: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #fff);
+            font-size: 24px;
+            margin: 20px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        
+        #clickButton:active {
+            transform: scale(0.95);
+        }
+        
+        #score {
+            font-size: 32px;
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="score">Счет: 0</div>
+    <button id="clickButton">Клик!</button>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+        
+        let score = 0;
+        const scoreElement = document.getElementById('score');
+        const clickButton = document.getElementById('clickButton');
+        
+        clickButton.addEventListener('click', () => {
+            score++;
+            scoreElement.textContent = `Счет: ${score}`;
+            // Отправляем данные в бот
+            tg.sendData(JSON.stringify({score: score}));
+        });
+    </script>
+</body>
+</html> 
