@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Telegram Кликер</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
@@ -16,6 +16,7 @@
             margin: 0;
             background: var(--tg-theme-bg-color);
             color: var(--tg-theme-text-color);
+            touch-action: manipulation; /* Отключаем двойной тап для зума */
         }
 
         #score {
@@ -55,29 +56,11 @@
         }
 
         .save-status {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            padding: 10px;
-            border-radius: 5px;
             display: none;
-        }
-
-        .save-status.success {
-            background: rgba(0, 255, 0, 0.2);
-            color: green;
-            display: block;
-        }
-
-        .save-status.error {
-            background: rgba(255, 0, 0, 0.2);
-            color: red;
-            display: block;
         }
     </style>
 </head>
 <body>
-    <div id="saveStatus" class="save-status"></div>
     <div id="score">0</div>
     <button id="clickButton">КЛИК!</button>
     <div class="stats">
@@ -93,7 +76,6 @@
         const scoreElement = document.getElementById('score');
         const clickButton = document.getElementById('clickButton');
         const multiplierElement = document.getElementById('multiplier');
-        const saveStatus = document.getElementById('saveStatus');
 
         // Добавьте после инициализации переменных
         let lastUpdateTime = 0;
@@ -141,23 +123,13 @@
             }
         }
 
-        function showSaveStatus(message, isError = false) {
-            saveStatus.textContent = message;
-            saveStatus.className = 'save-status ' + (isError ? 'error' : 'success');
-            setTimeout(() => {
-                saveStatus.className = 'save-status';
-            }, 3000);
-        }
-
         clickButton.addEventListener('click', async () => {
             try {
                 if (!tg.initDataUnsafe?.user?.id) {
-                    showSaveStatus('Ошибка: ID пользователя недоступен', true);
                     throw new Error('ID пользователя недоступен');
                 }
 
                 const userId = tg.initDataUnsafe.user.id;
-                showSaveStatus('Сохранение...');
                 
                 score += multiplier;
                 scoreElement.textContent = score;
@@ -181,22 +153,15 @@
                     body: JSON.stringify(saveData)
                 });
 
-                const result = await response.json();
-
-                if (!response.ok || result.status !== 'success') {
-                    showSaveStatus(result.message || 'Ошибка сохранения', true);
-                    throw new Error(result.message || 'Ошибка сохранения данных');
+                if (!response.ok) {
+                    throw new Error('Ошибка сохранения данных');
                 }
 
-                // Обновляем данные с сервера после успешного сохранения
                 await loadUserData();
-                
-                showSaveStatus('Сохранено!');
-                
                 tg.sendData(JSON.stringify(saveData));
 
             } catch (error) {
-                showSaveStatus('Ошибка: ' + error.message, true);
+                console.error('Ошибка:', error.message);
             }
         });
 
