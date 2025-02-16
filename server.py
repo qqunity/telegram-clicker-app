@@ -1,10 +1,50 @@
-from flask import Flask, send_from_directory, request, jsonify
+from flask import Flask, send_from_directory, request, jsonify, redirect
 import os
 from threading import Thread
 from game_repository import GameRepository
+import hashlib
+import hmac
+import base64
+import time
 
 app = Flask(__name__)
 game_repo = GameRepository()
+
+def validate_telegram_data(init_data: str) -> bool:
+    """Проверяет валидность данных от Telegram WebApp"""
+    try:
+        if not init_data:
+            return False
+
+        # Разбираем init_data на параметры
+        params = dict(param.split('=') for param in init_data.split('&'))
+        
+        if 'hash' not in params:
+            return False
+            
+        hash_value = params.pop('hash')
+        
+        # Сортируем параметры
+        data_check_string = '\n'.join(f'{k}={v}' for k, v in sorted(params.items()))
+        
+        # Создаем секретный ключ из токена бота
+        secret_key = hmac.new(
+            'WebAppData'.encode(),
+            os.getenv('BOT_TOKEN').encode(),
+            hashlib.sha256
+        ).digest()
+        
+        # Вычисляем хеш
+        computed_hash = hmac.new(
+            secret_key,
+            data_check_string.encode(),
+            hashlib.sha256
+        ).hexdigest()
+        
+        return computed_hash == hash_value
+    except Exception as e:
+        print(f"Ошибка валидации данных Telegram: {e}")
+        return False
 
 @app.route('/')
 def serve_game():
