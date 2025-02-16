@@ -63,18 +63,14 @@ async def load_scores():
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     
-    webapp_button = InlineKeyboardButton(
-        text="🎮 Играть", 
-        web_app=WebAppInfo(url=f"https://qqunity.ru")
-    )
-    stats_button = InlineKeyboardButton("📊 Статистика", callback_data="stats")
-    keyboard = InlineKeyboardMarkup([[webapp_button], [stats_button]])
-    
     await update.message.reply_text(
-        "🎮 Добро пожаловать в Telegram Кликер!\n\n"
-        "Нажимайте на кнопку, чтобы заработать очки.\n"
-        "Каждые 100 очков ваш множитель будет расти!",
-        reply_markup=keyboard
+        "🎮 Кликер",
+        reply_markup=InlineKeyboardMarkup([[
+            InlineKeyboardButton(
+                "🎮 Играть",
+                web_app=WebAppInfo(url="https://qqunity.ru")
+            )
+        ]])
     )
 
 # Обработчик нажатия кнопки
