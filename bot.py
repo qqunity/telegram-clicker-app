@@ -164,6 +164,82 @@ async def web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print(f"Ошибка при обработке данных от веб-приложения: {e}")
         await update.message.reply_text("Произошла ошибка при сохранении прогресса")
 
+async def top(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        leaders = game_repo.get_leaderboard(10)
+        
+        # Получаем информацию о пользователе, который запросил статистику
+        user_id = str(update.effective_user.id)
+        user_data = game_repo.get_user_score(user_id) or (0, 1)
+        user_rank = await get_rank(user_id)
+        
+        # Формируем сообщение с таблицей лидеров
+        text = "🏆 ТОП-10 ИГРОКОВ:\n\n"
+        
+        for i, (leader_id, score, multiplier) in enumerate(leaders, 1):
+            # Добавляем эмодзи для топ-3
+            prefix = {1: "👑", 2: "🥈", 3: "🥉"}.get(i, f"{i}.")
+            
+            # Отмечаем текущего пользователя
+            if leader_id == user_id:
+                text += f"{prefix} ВЫ: {score:,} очков (x{multiplier})\n"
+            else:
+                text += f"{prefix} Игрок: {score:,} очков (x{multiplier})\n"
+        
+        # Добавляем информацию о текущем пользователе, если он не в топ-10
+        if user_rank > 10:
+            text += f"\nВаша позиция:\n{user_rank}. ВЫ: {user_data[0]:,} очков (x{user_data[1]})"
+        
+        # Добавляем статистику
+        total_players = len(game_repo.get_leaderboard(limit=None))
+        text += f"\n\n📊 Всего игроков: {total_players:,}"
+        
+        # Добавляем кнопку для обновления статистики
+        keyboard = InlineKeyboardMarkup([[
+            InlineKeyboardButton("🔄 Обновить", callback_data="refresh_top")
+        ]])
+        
+        await update.message.reply_text(text, reply_markup=keyboard)
+        
+    except Exception as e:
+        print(f"Ошибка при получении топа игроков: {e}")
+        await update.message.reply_text("Не удалось загрузить статистику")
+
+# Обработчик для кнопки обновления
+async def refresh_top(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    try:
+        leaders = game_repo.get_leaderboard(10)
+        user_id = str(query.from_user.id)
+        user_data = game_repo.get_user_score(user_id) or (0, 1)
+        user_rank = await get_rank(user_id)
+        
+        text = "🏆 ТОП-10 ИГРОКОВ:\n\n"
+        for i, (leader_id, score, multiplier) in enumerate(leaders, 1):
+            prefix = {1: "👑", 2: "🥈", 3: "🥉"}.get(i, f"{i}.")
+            if leader_id == user_id:
+                text += f"{prefix} ВЫ: {score:,} очков (x{multiplier})\n"
+            else:
+                text += f"{prefix} Игрок: {score:,} очков (x{multiplier})\n"
+        
+        if user_rank > 10:
+            text += f"\nВаша позиция:\n{user_rank}. ВЫ: {user_data[0]:,} очков (x{user_data[1]})"
+        
+        total_players = len(game_repo.get_leaderboard(limit=None))
+        text += f"\n\n📊 Всего игроков: {total_players:,}"
+        
+        await query.edit_message_text(
+            text=text,
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("🔄 Обновить", callback_data="refresh_top")
+            ]])
+        )
+        await query.answer("Статистика обновлена!")
+        
+    except Exception as e:
+        print(f"Ошибка при обновлении топа: {e}")
+        await query.answer("Не удалось обновить статистику")
+
 async def main():
     token = os.getenv('BOT_TOKEN')
     if not token:
@@ -176,6 +252,8 @@ async def main():
     application.add_handler(CommandHandler("leaderboard", leaderboard))
     application.add_handler(CommandHandler("stats", stats))
     application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
+    application.add_handler(CommandHandler("top", top))
+    application.add_handler(CallbackQueryHandler(refresh_top, pattern="^refresh_top$"))
 
     print("Бот запущен. Нажмите Ctrl+C для остановки")
     

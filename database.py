@@ -45,7 +45,10 @@ class Database:
                     CREATE TABLE IF NOT EXISTS scores (
                         user_id TEXT PRIMARY KEY,
                         score INTEGER DEFAULT 0,
-                        multiplier INTEGER DEFAULT 1
+                        multiplier INTEGER DEFAULT 1,
+                        first_name TEXT,
+                        photo_url TEXT,
+                        last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
                 """)
                 self.connection.commit()

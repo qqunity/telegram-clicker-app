@@ -111,6 +111,56 @@ def test_db():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+@app.route('/api/get_leaderboard')
+def get_leaderboard():
+    try:
+        # Получаем топ-10 игроков
+        leaders = game_repo.get_leaderboard(10)
+        
+        # Получаем ID текущего пользователя из query параметров
+        user_id = request.args.get('user_id')
+        
+        # Форматируем данные лидеров
+        leaders_data = [
+            {
+                'user_id': str(leader[0]),  # user_id
+                'score': int(leader[1]),    # score
+                'multiplier': int(leader[2]) # multiplier
+            }
+            for leader in leaders
+        ]
+        
+        # Получаем общее количество игроков
+        total_players = len(game_repo.get_leaderboard(limit=None))
+        
+        # Если пользователь не в топ-10, добавляем его данные
+        current_user = None
+        if user_id:
+            user_in_top = any(l['user_id'] == user_id for l in leaders_data)
+            if not user_in_top:
+                user_data = game_repo.get_user_score(user_id)
+                if user_data:
+                    score, multiplier = user_data
+                    # Получаем ранг пользователя
+                    all_leaders = game_repo.get_leaderboard()
+                    rank = next((i for i, (lid, _, _) in enumerate(all_leaders, 1) 
+                               if str(lid) == str(user_id)), total_players)
+                    current_user = {
+                        'rank': rank,
+                        'score': score,
+                        'multiplier': multiplier
+                    }
+        
+        return jsonify({
+            'leaders': leaders_data,
+            'currentUser': current_user,
+            'totalPlayers': total_players
+        })
+        
+    except Exception as e:
+        print(f"Ошибка при получении таблицы лидеров: {e}")
+        return jsonify({'error': 'Не удалось загрузить данные'}), 500
+
 @app.route('/<path:path>')
 def serve_static(path):
     return send_from_directory('.', path)

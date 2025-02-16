@@ -103,6 +103,108 @@
             flex-direction: column;
             align-items: center;
         }
+
+        /* Добавляем стили для модального окна статистики */
+        .stats-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+        }
+
+        .stats-modal.visible {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .stats-content {
+            background: var(--tg-theme-bg-color);
+            padding: 20px;
+            border-radius: 16px;
+            max-width: 90%;
+            width: 300px; /* Фиксированная ширина */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .stats-header {
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .leaderboard-item {
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 12px;
+            background: var(--tg-theme-secondary-bg-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .leaderboard-item.current-user {
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+        }
+
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .player-stats {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .total-players {
+            text-align: center;
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 12px;
+            background: var(--tg-theme-secondary-bg-color);
+        }
+
+        .stats-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: var(--tg-theme-text-color);
+            font-size: 24px;
+            cursor: pointer;
+            padding: 8px;
+        }
+
+        .stats-button {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            z-index: 100;
+        }
+
+        .user-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
     </style>
 </head>
 <body>
@@ -110,11 +212,20 @@
         <div class="loader"></div>
     </div>
 
+    <button class="stats-button" onclick="showStats()">📊</button>
+
     <div class="game-content">
         <div id="score">0</div>
         <button id="clickButton">КЛИК!</button>
         <div class="stats">
             <div class="multiplier">Множитель: x<span id="multiplier">1</span></div>
+        </div>
+    </div>
+
+    <div class="stats-modal">
+        <div class="stats-content">
+            <button class="stats-close" onclick="hideStats()">×</button>
+            <div id="stats-data">Загрузка статистики...</div>
         </div>
     </div>
 
@@ -253,6 +364,61 @@
 
         // Запускаем периодическое обновление
         periodicUpdate();
+
+        async function showStats() {
+            const modal = document.querySelector('.stats-modal');
+            const statsData = document.getElementById('stats-data');
+            modal.classList.add('visible');
+
+            try {
+                const userId = tg.initDataUnsafe.user.id;
+                const response = await fetch(`/api/get_leaderboard?user_id=${userId}`);
+                const data = await response.json();
+                
+                let html = '<div class="stats-header">🏆 ТОП ИГРОКОВ</div>';
+                
+                data.leaders.forEach((leader, index) => {
+                    const prefix = index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
+                    const isCurrentUser = leader.user_id === userId;
+                    const className = isCurrentUser ? 'leaderboard-item current-user' : 'leaderboard-item';
+                    
+                    html += `
+                        <div class="${className}">
+                            <div class="player-info">
+                                ${prefix} ${isCurrentUser ? 'ВЫ' : 'Игрок'}
+                            </div>
+                            <div class="player-stats">
+                                ${leader.score.toLocaleString()} (×${leader.multiplier})
+                            </div>
+                        </div>
+                    `;
+                });
+
+                if (data.currentUser && !data.leaders.find(l => l.user_id === userId)) {
+                    html += `
+                        <div class="leaderboard-item current-user">
+                            <div class="player-info">
+                                ${data.currentUser.rank}. ВЫ
+                            </div>
+                            <div class="player-stats">
+                                ${data.currentUser.score.toLocaleString()} (×${data.currentUser.multiplier})
+                            </div>
+                        </div>
+                    `;
+                }
+
+                html += `<div class="total-players">📊 Всего игроков: ${data.totalPlayers.toLocaleString()}</div>`;
+                
+                statsData.innerHTML = html;
+            } catch (error) {
+                statsData.innerHTML = 'Не удалось загрузить статистику';
+                console.error('Ошибка загрузки статистики:', error);
+            }
+        }
+
+        function hideStats() {
+            document.querySelector('.stats-modal').classList.remove('visible');
+        }
     </script>
 </body>
 </html> 
