@@ -32,29 +32,8 @@ class Database:
             )
             print("Успешное подключение к БД")
             
-            # Создаем таблицу при первом подключении
-            self.init_db()
-            
         except Exception as e:
             print(f"Ошибка подключения к БД: {e}")
-    
-    def init_db(self):
-        try:
-            with self.connection.cursor() as cursor:
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS scores (
-                        user_id TEXT PRIMARY KEY,
-                        score INTEGER DEFAULT 0,
-                        multiplier INTEGER DEFAULT 1,
-                        first_name TEXT,
-                        photo_url TEXT,
-                        last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    )
-                """)
-                self.connection.commit()
-                print("База данных успешно инициализирована")
-        except Exception as e:
-            print(f"Ошибка при инициализации БД: {e}")
     
     def get_connection(self):
         if self.connection is None or self.connection.closed:

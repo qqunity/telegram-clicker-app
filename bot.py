@@ -8,9 +8,13 @@ from dotenv import load_dotenv
 from database import Database
 from server import start_server
 from game_repository import GameRepository
+from migrations import run_migrations
 
 # Загружаем переменные окружения в самом начале
 load_dotenv()
+
+# Запускаем миграции перед стартом бота
+run_migrations()
 
 # Запускаем веб-сервер в отдельном потоке
 start_server()
